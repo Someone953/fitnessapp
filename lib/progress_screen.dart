@@ -4,7 +4,7 @@ import 'dart:io';
 import 'db_helper.dart';
 
 class ProgressScreen extends StatefulWidget {
-  final int userId;
+  final String userId;
   const ProgressScreen({super.key, required this.userId});
   @override
   State<ProgressScreen> createState() => _ProgressScreenState();
@@ -22,9 +22,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   Future<void> _loadData() async {
-    final p = await DbHelper.query('progress_photo', where: 'user_id = ?', whereArgs: [widget.userId]);
-    final n = await DbHelper.query('nutrition', where: 'user_id = ?', whereArgs: [widget.userId]);
+    final p = await DbHelper.query('progress_photo', userId: widget.userId);
+    final n = await DbHelper.query('nutrition', userId: widget.userId);
     setState(() {
+      // Simple local sort by date
+      p.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
+      n.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
       photos = p;
       nutrition = n;
     });
@@ -47,7 +50,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 'protein': 25,
               });
               _loadData();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nutrition logged!')));
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nutrition logged!')));
+              }
             },
             child: const Text('Log New Meal (CRUD Create)'),
           ),
@@ -56,8 +61,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
             child: ListView.builder(
               itemCount: nutrition.length,
               itemBuilder: (ctx, i) => ListTile(
-                title: Text(nutrition[i]['food']),
-                subtitle: Text('${nutrition[i]['calories']} kcal • ${nutrition[i]['protein']}g protein'),
+                title: Text(nutrition[i]['food'] ?? 'Food'),
+                subtitle: Text('${nutrition[i]['calories'] ?? 0} kcal • ${nutrition[i]['protein'] ?? 0}g protein'),
               ),
             ),
           ),
@@ -73,7 +78,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   'note': 'Progress photo taken',
                 });
                 _loadData();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Progress photo saved!')));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Progress photo saved!')));
+                }
               }
             },
             child: const Text('Take Progress Photo (Camera Access)'),
@@ -83,8 +90,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
             child: ListView.builder(
               itemCount: photos.length,
               itemBuilder: (ctx, i) => ListTile(
-                title: Text('Photo ${photos[i]['date']}'),
-                leading: photos[i]['image_path'].isNotEmpty
+                title: Text('Photo ${photos[i]['date'] ?? ''}'),
+                leading: (photos[i]['image_path'] != null && photos[i]['image_path'].isNotEmpty)
                     ? Image.file(File(photos[i]['image_path']), width: 60, height: 60, fit: BoxFit.cover)
                     : const Icon(Icons.photo),
               ),

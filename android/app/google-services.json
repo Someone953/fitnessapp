@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1062259147876",
+    "project_id": "fitlahapp",
+    "storage_bucket": "fitlahapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1062259147876:android:d6ccefc4f3d72abb53cb71",
+        "android_client_info": {
+          "package_name": "com.my_fit_lah_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpY_OYyK2YEFbfzS-LQkgzyZ5KR6pbtFs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

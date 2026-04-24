@@ -1,79 +1,72 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DbHelper {
-  static Database? _db;
-
-  static Future<void> init() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final path = join(dir.path, 'fitwell.db');
-    _db = await openDatabase(
-      path,
-      version: 3,
-      onCreate: (db, version) async {
-        await db.execute('''CREATE TABLE users (
-          id INTEGER PRIMARY KEY, 
-          username TEXT UNIQUE, 
-          password TEXT
-        )''');
-        await db.execute('''CREATE TABLE profile (
-          id INTEGER PRIMARY KEY, 
-          user_id INTEGER,
-          name TEXT, 
-          age INTEGER,
-          gender TEXT,
-          weight REAL, 
-          height REAL, 
-          bmi REAL, 
-          fitness_level TEXT,
-          goal TEXT, 
-          weight_target REAL,
-          step_goal INTEGER,
-          workout_goal INTEGER,
-          date TEXT,
-          FOREIGN KEY (user_id) REFERENCES users (id)
-        )''');
-        await db.execute('''CREATE TABLE workout (id INTEGER PRIMARY KEY, user_id INTEGER, title TEXT, sets INTEGER, reps INTEGER, date TEXT, FOREIGN KEY (user_id) REFERENCES users (id))''');
-        await db.execute('''CREATE TABLE nutrition (id INTEGER PRIMARY KEY, user_id INTEGER, food TEXT, calories INTEGER, protein INTEGER, date TEXT, FOREIGN KEY (user_id) REFERENCES users (id))''');
-        await db.execute('''CREATE TABLE progress_photo (id INTEGER PRIMARY KEY, user_id INTEGER, date TEXT, image_path TEXT, note TEXT, FOREIGN KEY (user_id) REFERENCES users (id))''');
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 3) {
-          await db.execute('''CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY, 
-            username TEXT UNIQUE, 
-            password TEXT
-          )''');
-          // Add user_id columns if they don't exist
-          try { await db.execute('ALTER TABLE profile ADD COLUMN user_id INTEGER'); } catch (_) {}
-          try { await db.execute('ALTER TABLE workout ADD COLUMN user_id INTEGER'); } catch (_) {}
-          try { await db.execute('ALTER TABLE nutrition ADD COLUMN user_id INTEGER'); } catch (_) {}
-          try { await db.execute('ALTER TABLE progress_photo ADD COLUMN user_id INTEGER'); } catch (_) {}
-        }
-      },
-    );
-  }
-
-  static Database get db => _db!;
+  static final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // User Auth Methods
-  static Future<int> register(String username, String password) async {
-    return await db.insert('users', {'username': username, 'password': password});
+  static Future<String?> register(String email, String password, String username) async {
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      final uid = credential.user?.uid;
+      
+      if (uid != null) {
+        // Create a user document with username
+        await _db.collection('users').doc(uid).set({
+          'username': username,
+          'email': email,
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      }
+      return uid;
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  static Future<Map<String, dynamic>?> login(String username, String password) async {
-    final res = await db.query('users', where: 'username = ? AND password = ?', whereArgs: [username, password]);
-    return res.isNotEmpty ? res.first : null;
+  static Future<String?> login(String email, String password) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      return credential.user?.uid;
+    } catch (e) {
+      return null;
+    }
   }
 
-  static Future<void> insertSampleData() async {
-    // Optional: add sample user and profile if needed
+  static Future<void> logout() async {
+    await _auth.signOut();
   }
 
-  static Future<int> insert(String table, Map<String, dynamic> data) => db.insert(table, data);
-  static Future<List<Map<String, dynamic>>> query(String table, {String? where, List<dynamic>? whereArgs}) => 
-    db.query(table, where: where, whereArgs: whereArgs, orderBy: 'id DESC');
-  static Future<int> update(String table, Map<String, dynamic> data, int id) => db.update(table, data, where: 'id = ?', whereArgs: [id]);
-  static Future<int> delete(String table, int id) => db.delete(table, where: 'id = ?', whereArgs: [id]);
+  // Firestore Methods
+  static Future<void> insert(String collection, Map<String, dynamic> data) async {
+    await _db.collection(collection).add(data);
+  }
+
+  static Future<List<Map<String, dynamic>>> query(String collection, {String? userId}) async {
+    Query query = _db.collection(collection);
+    if (userId != null) {
+      query = query.where('user_id', isEqualTo: userId);
+    }
+    
+    final snapshot = await query.get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      data['id'] = doc.id; 
+      return data;
+    }).toList();
+  }
+
+  static Future<void> update(String collection, Map<String, dynamic> data, String id) async {
+    await _db.collection(collection).doc(id).update(data);
+  }
+
+  static Future<void> delete(String collection, String id) async {
+    await _db.collection(collection).doc(id).delete();
+  }
+  
+  static Future<Map<String, dynamic>?> getUserData(String uid) async {
+    final doc = await _db.collection('users').doc(uid).get();
+    return doc.data();
+  }
 }

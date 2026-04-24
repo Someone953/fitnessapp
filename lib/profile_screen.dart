@@ -4,7 +4,7 @@ import 'db_helper.dart';
 import 'dart:math';
 
 class ProfileScreen extends StatefulWidget {
-  final int userId;
+  final String userId;
   const ProfileScreen({super.key, required this.userId});
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -37,11 +37,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadData() async {
-    final data = await DbHelper.query('profile', where: 'user_id = ?', whereArgs: [widget.userId]);
+    final data = await DbHelper.query('profile', userId: widget.userId);
     setState(() {
+      // Sort by date locally since Firestore query was simple
+      data.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
       _history = data;
       if (data.isNotEmpty) {
-        final last = data.first; // query returns in DESC order, so first is latest
+        final last = data.first; 
         _weightCtrl.text = last['weight']?.toString() ?? '';
         _heightCtrl.text = last['height']?.toString() ?? '';
         _ageCtrl.text = last['age']?.toString() ?? '';
@@ -57,10 +59,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  void _saveProfile() {
+  void _saveProfile() async {
     if (_weightCtrl.text.isEmpty || _heightCtrl.text.isEmpty) return;
-    final weight = double.parse(_weightCtrl.text);
-    final height = double.parse(_heightCtrl.text);
+    final weight = double.tryParse(_weightCtrl.text) ?? 0;
+    final height = double.tryParse(_heightCtrl.text) ?? 1;
     final bmi = weight / pow(height, 2);
 
     setState(() {
@@ -68,7 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _bmiStatus = bmi < 18.5 ? 'Underweight' : (bmi > 25 ? 'Overweight' : 'Normal');
     });
 
-    DbHelper.insert('profile', {
+    await DbHelper.insert('profile', {
       'user_id': widget.userId,
       'name': 'User',
       'age': int.tryParse(_ageCtrl.text),
@@ -84,7 +86,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'date': DateTime.now().toIso8601String().substring(0, 10)
     });
     _loadData();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Saved')));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Saved')));
+    }
   }
 
   @override

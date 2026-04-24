@@ -1,4 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.my_fit_lah_app">
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="my_fit_lah_app"
         android:name="${applicationName}"

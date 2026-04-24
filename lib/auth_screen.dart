@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'db_helper.dart';
 
 class AuthScreen extends StatefulWidget {
-  final Function(int) onLoginSuccess;
+  final Function(String) onLoginSuccess;
   const AuthScreen({super.key, required this.onLoginSuccess});
 
   @override
@@ -10,15 +10,17 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
   bool _isLogin = true;
 
   Future<void> _submit() async {
-    final username = _usernameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text.trim();
+    final username = _usernameCtrl.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty || (!_isLogin && username.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all fields')),
       );
@@ -26,26 +28,34 @@ class _AuthScreenState extends State<AuthScreen> {
     }
 
     if (_isLogin) {
-      final user = await DbHelper.login(username, password);
-      if (user != null) {
-        widget.onLoginSuccess(user['id'] as int);
-      } else {
+      try {
+        final userId = await DbHelper.login(email, password);
+        if (userId != null) {
+          widget.onLoginSuccess(userId);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid email or password')),
+          );
+        }
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid username or password')),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     } else {
       try {
-        final id = await DbHelper.register(username, password);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful! Please login.')),
-        );
-        setState(() {
-          _isLogin = true;
-        });
+        final userId = await DbHelper.register(email, password, username);
+        if (userId != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Registration successful! Please login.')),
+          );
+          setState(() {
+            _isLogin = true;
+          });
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Username already exists')),
+          SnackBar(content: Text('Registration failed: ${e.toString()}')),
         );
       }
     }
@@ -61,19 +71,31 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.fitness_center, size: 80, color: Colors.teal),
+              const Icon(Icons.fitness_center, size: 80, color: Colors.teal),
               const SizedBox(height: 20),
               Text(
                 _isLogin ? 'Welcome Back' : 'Create Account',
                 style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.teal),
               ),
               const SizedBox(height: 30),
+              if (!_isLogin) ...[
+                TextField(
+                  controller: _usernameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               TextField(
-                controller: _usernameCtrl,
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  labelText: 'Username',
+                  labelText: 'Email',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
+                  prefixIcon: Icon(Icons.email),
                 ),
               ),
               const SizedBox(height: 16),

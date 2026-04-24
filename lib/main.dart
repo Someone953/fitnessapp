@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'db_helper.dart';
 import 'profile_screen.dart';
@@ -6,9 +7,16 @@ import 'progress_screen.dart';
 import 'auth_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await DbHelper.init();
-  runApp(const FitWellApp());
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp();
+    runApp(const FitWellApp());
+  } catch (e) {
+    debugPrint("Firebase Initialization Error: $e");
+    // Run the app anyway so it doesn't just show a black screen, 
+    // though Firebase features will fail.
+    runApp(const FitWellApp());
+  }
 }
 
 class FitWellApp extends StatelessWidget {
@@ -35,9 +43,9 @@ class RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<RootScreen> {
-  int? _loggedInUserId;
+  String? _loggedInUserId;
 
-  void _onLoginSuccess(int userId) {
+  void _onLoginSuccess(String userId) {
     setState(() {
       _loggedInUserId = userId;
     });
@@ -59,7 +67,7 @@ class _RootScreenState extends State<RootScreen> {
 }
 
 class HomeScreen extends StatefulWidget {
-  final int userId;
+  final String userId;
   final VoidCallback onLogout;
   const HomeScreen({super.key, required this.userId, required this.onLogout});
 

@@ -4,7 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'db_helper.dart';
 
 class WorkoutScreen extends StatefulWidget {
-  final int userId;
+  final String userId;
   const WorkoutScreen({super.key, required this.userId});
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -21,8 +21,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Future<void> _loadWorkouts() async {
-    final data = await DbHelper.query('workout', where: 'user_id = ?', whereArgs: [widget.userId]);
-    setState(() => _workouts = data);
+    final data = await DbHelper.query('workout', userId: widget.userId);
+    setState(() {
+      data.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
+      _workouts = data;
+    });
   }
 
   void _addWorkout() async {
