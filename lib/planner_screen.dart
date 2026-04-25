@@ -74,7 +74,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: Text(container['title'], style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+                          Expanded(child: Text(container['title'] ?? 'Routine', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.white70),
                             onPressed: () async {
@@ -153,7 +153,7 @@ class _BlockListState extends State<BlockList> {
         ..._blocks.map((block) => Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            title: Text(block['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(block['title'] ?? 'Category', style: const TextStyle(fontWeight: FontWeight.bold)),
             trailing: IconButton(
               icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
               onPressed: () async {
@@ -271,6 +271,10 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
       children: [
         ..._exercises.map((ex) {
           final isExpanded = _expandedIds.contains(ex['id']);
+          final String name = ex['name'] ?? 'Exercise';
+          final String description = ex['description'] ?? '';
+          final String imagePath = ex['image_path'] ?? '';
+          
           return ListTile(
             dense: true,
             onTap: () {
@@ -282,19 +286,19 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
                 }
               });
             },
-            leading: ex['image_path'].isNotEmpty 
-              ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.file(File(ex['image_path']), width: 40, height: 40, fit: BoxFit.cover))
+            leading: imagePath.isNotEmpty 
+              ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.file(File(imagePath), width: 40, height: 40, fit: BoxFit.cover))
               : const Icon(Icons.fitness_center, size: 30),
-            title: Text(ex['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${ex['sets']} sets x ${ex['reps']} reps'),
-                if (isExpanded && ex['description'].toString().isNotEmpty)
+                Text('${ex['sets'] ?? 0} sets x ${ex['reps'] ?? 0} reps'),
+                if (isExpanded && description.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Text(
-                      ex['description'], 
+                      description,
                       style: TextStyle(color: Colors.grey.shade700, fontStyle: FontStyle.italic),
                     ),
                   ),

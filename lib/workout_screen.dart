@@ -50,9 +50,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               itemCount: _workouts.length,
               itemBuilder: (ctx, i) {
                 final w = _workouts[i];
+                final String title = w['title'] ?? 'Untitled Workout';
+                final String sets = (w['sets'] ?? 0).toString();
+                final String reps = (w['reps'] ?? 0).toString();
+
                 return ListTile(
-                  title: Text(w['title']),
-                  subtitle: Text('${w['sets']} sets × ${w['reps']} reps'),
+                  title: Text(title),
+                  subtitle: Text('$sets sets × $reps reps'),
                   trailing: IconButton(
                     icon: const Icon(Icons.qr_code),
                     onPressed: () => showDialog(

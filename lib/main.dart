@@ -4,6 +4,7 @@ import 'profile_screen.dart';
 import 'workout_screen.dart';
 import 'meal_logger_screen.dart';
 import 'planner_screen.dart';
+import 'exercise_library_screen.dart';
 import 'auth_screen.dart';
 
 void main() async {
@@ -79,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _screens = [
       ProfileScreen(userId: widget.userId),
+      const ExerciseLibraryScreen(),
       PlannerScreen(userId: widget.userId),
       WorkoutScreen(userId: widget.userId),
       MealLoggerScreen(userId: widget.userId),
@@ -108,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Library'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Planner'),
           BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Logs'),
           BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Meals'),
