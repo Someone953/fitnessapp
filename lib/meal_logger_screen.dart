@@ -1,0 +1,169 @@
+import 'package:flutter/material.dart';
+import 'db_helper.dart';
+
+class MealLoggerScreen extends StatefulWidget {
+  final int userId;
+  const MealLoggerScreen({super.key, required this.userId});
+
+  @override
+  State<MealLoggerScreen> createState() => _MealLoggerScreenState();
+}
+
+class _MealLoggerScreenState extends State<MealLoggerScreen> {
+  List<Map<String, dynamic>> _meals = [];
+  int _totalCalories = 0;
+  int _totalProtein = 0;
+  int _totalCarbs = 0;
+  int _totalFats = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMeals();
+  }
+
+  Future<void> _loadMeals() async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final data = await DbHelper.query('nutrition', where: 'user_id = ? AND date = ?', whereArgs: [widget.userId, today]);
+    
+    int cal = 0, pro = 0, carb = 0, fat = 0;
+    for (var m in data) {
+      cal += (m['calories'] as num).toInt();
+      pro += (m['protein'] as num).toInt();
+      carb += (m['carbs'] as num? ?? 0).toInt();
+      fat += (m['fats'] as num? ?? 0).toInt();
+    }
+
+    setState(() {
+      _meals = data;
+      _totalCalories = cal;
+      _totalProtein = pro;
+      _totalCarbs = carb;
+      _totalFats = fat;
+    });
+  }
+
+  void _showMealForm([Map<String, dynamic>? meal]) {
+    final foodCtrl = TextEditingController(text: meal?['food'] ?? '');
+    final calCtrl = TextEditingController(text: meal?['calories']?.toString() ?? '');
+    final proCtrl = TextEditingController(text: meal?['protein']?.toString() ?? '');
+    final carbCtrl = TextEditingController(text: meal?['carbs']?.toString() ?? '');
+    final fatCtrl = TextEditingController(text: meal?['fats']?.toString() ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(meal == null ? 'Log New Meal' : 'Edit Meal', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              TextField(controller: foodCtrl, decoration: const InputDecoration(labelText: 'Food Name')),
+              TextField(controller: calCtrl, decoration: const InputDecoration(labelText: 'Calories (kcal)'), keyboardType: TextInputType.number),
+              TextField(controller: proCtrl, decoration: const InputDecoration(labelText: 'Protein (g)'), keyboardType: TextInputType.number),
+              TextField(controller: carbCtrl, decoration: const InputDecoration(labelText: 'Carbs (g)'), keyboardType: TextInputType.number),
+              TextField(controller: fatCtrl, decoration: const InputDecoration(labelText: 'Fats (g)'), keyboardType: TextInputType.number),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () async {
+                  final data = {
+                    'user_id': widget.userId,
+                    'food': foodCtrl.text,
+                    'calories': int.tryParse(calCtrl.text) ?? 0,
+                    'protein': int.tryParse(proCtrl.text) ?? 0,
+                    'carbs': int.tryParse(carbCtrl.text) ?? 0,
+                    'fats': int.tryParse(fatCtrl.text) ?? 0,
+                    'date': meal?['date'] ?? DateTime.now().toIso8601String().substring(0, 10),
+                  };
+
+                  if (meal == null) {
+                    await DbHelper.insert('nutrition', data);
+                  } else {
+                    await DbHelper.update('nutrition', data, meal['id']);
+                  }
+                  Navigator.pop(ctx);
+                  _loadMeals();
+                },
+                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                child: const Text('Save Meal'),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.teal.shade50,
+            child: Column(
+              children: [
+                const Text("Today's Summary", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _summaryItem('Cals', _totalCalories, 'kcal'),
+                    _summaryItem('Pro', _totalProtein, 'g'),
+                    _summaryItem('Carb', _totalCarbs, 'g'),
+                    _summaryItem('Fat', _totalFats, 'g'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _meals.isEmpty
+                ? const Center(child: Text('No meals logged today.'))
+                : ListView.builder(
+                    itemCount: _meals.length,
+                    itemBuilder: (ctx, i) {
+                      final m = _meals[i];
+                      return ListTile(
+                        title: Text(m['food'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${m['calories']} kcal | P: ${m['protein']}g C: ${m['carbs']}g F: ${m['fats']}g'),
+                        onTap: () => _showMealForm(m),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                          onPressed: () async {
+                            await DbHelper.delete('nutrition', m['id']);
+                            _loadMeals();
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton.icon(
+              onPressed: () => _showMealForm(),
+              icon: const Icon(Icons.add),
+              label: const Text('Log New Meal'),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryItem(String label, int value, String unit) {
+    return Column(
+      children: [
+        Text(value.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal)),
+        Text(unit, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(label, style: const TextStyle(fontSize: 14)),
+      ],
+    );
+  }
+}
