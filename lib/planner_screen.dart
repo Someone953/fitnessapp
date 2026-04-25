@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
-import 'db_helper.dart';
 
 class PlannerScreen extends StatefulWidget {
-  final int userId;
+  final String userId;
   const PlannerScreen({super.key, required this.userId});
 
   @override
@@ -21,8 +21,18 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Future<void> _loadContainers() async {
-    final data = await DbHelper.query('planner_containers', where: 'user_id = ?', whereArgs: [widget.userId]);
-    setState(() => _containers = data);
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('planner_containers')
+        .where('user_id', isEqualTo: widget.userId)
+        .get();
+    
+    setState(() {
+      _containers = querySnapshot.docs.map((doc) {
+        final map = doc.data();
+        map['id'] = doc.id;
+        return map;
+      }).toList();
+    });
   }
 
   void _addContainer() {
@@ -37,7 +47,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
           TextButton(
             onPressed: () async {
               if (ctrl.text.isNotEmpty) {
-                await DbHelper.insert('planner_containers', {'user_id': widget.userId, 'title': ctrl.text});
+                await FirebaseFirestore.instance.collection('planner_containers').add({
+                  'user_id': widget.userId,
+                  'title': ctrl.text
+                });
                 Navigator.pop(ctx);
                 _loadContainers();
               }
@@ -78,7 +91,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.white70),
                             onPressed: () async {
-                              await DbHelper.delete('planner_containers', container['id']);
+                              await FirebaseFirestore.instance.collection('planner_containers').doc(container['id']).delete();
                               _loadContainers();
                             },
                           ),
@@ -101,7 +114,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 }
 
 class BlockList extends StatefulWidget {
-  final int containerId;
+  final String containerId;
   const BlockList({super.key, required this.containerId});
 
   @override
@@ -118,8 +131,18 @@ class _BlockListState extends State<BlockList> {
   }
 
   Future<void> _loadBlocks() async {
-    final data = await DbHelper.query('planner_blocks', where: 'container_id = ?', whereArgs: [widget.containerId]);
-    setState(() => _blocks = data);
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('planner_blocks')
+        .where('container_id', isEqualTo: widget.containerId)
+        .get();
+    
+    setState(() {
+      _blocks = querySnapshot.docs.map((doc) {
+        final map = doc.data();
+        map['id'] = doc.id;
+        return map;
+      }).toList();
+    });
   }
 
   void _addBlock() {
@@ -134,7 +157,10 @@ class _BlockListState extends State<BlockList> {
           TextButton(
             onPressed: () async {
               if (ctrl.text.isNotEmpty) {
-                await DbHelper.insert('planner_blocks', {'container_id': widget.containerId, 'title': ctrl.text});
+                await FirebaseFirestore.instance.collection('planner_blocks').add({
+                  'container_id': widget.containerId,
+                  'title': ctrl.text
+                });
                 Navigator.pop(ctx);
                 _loadBlocks();
               }
@@ -157,7 +183,7 @@ class _BlockListState extends State<BlockList> {
             trailing: IconButton(
               icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
               onPressed: () async {
-                await DbHelper.delete('planner_blocks', block['id']);
+                await FirebaseFirestore.instance.collection('planner_blocks').doc(block['id']).delete();
                 _loadBlocks();
               },
             ),
@@ -180,7 +206,7 @@ class _BlockListState extends State<BlockList> {
 }
 
 class ExerciseMiniList extends StatefulWidget {
-  final int blockId;
+  final String blockId;
   const ExerciseMiniList({super.key, required this.blockId});
 
   @override
@@ -189,7 +215,7 @@ class ExerciseMiniList extends StatefulWidget {
 
 class _ExerciseMiniListState extends State<ExerciseMiniList> {
   List<Map<String, dynamic>> _exercises = [];
-  final Set<int> _expandedIds = {}; // Track which exercises show descriptions
+  final Set<String> _expandedIds = {};
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -199,8 +225,18 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
   }
 
   Future<void> _loadExercises() async {
-    final data = await DbHelper.db.query('planner_exercises', where: 'block_id = ?', whereArgs: [widget.blockId], orderBy: 'id ASC');
-    setState(() => _exercises = data);
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('planner_exercises')
+        .where('block_id', isEqualTo: widget.blockId)
+        .get();
+    
+    setState(() {
+      _exercises = querySnapshot.docs.map((doc) {
+        final map = doc.data();
+        map['id'] = doc.id;
+        return map;
+      }).toList();
+    });
   }
 
   void _addExercise() {
@@ -243,7 +279,7 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
                 ElevatedButton(
                   onPressed: () async {
                     if (nameCtrl.text.isEmpty) return;
-                    await DbHelper.insert('planner_exercises', {
+                    await FirebaseFirestore.instance.collection('planner_exercises').add({
                       'block_id': widget.blockId,
                       'name': nameCtrl.text,
                       'description': descCtrl.text,
@@ -286,7 +322,7 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
                 }
               });
             },
-            leading: imagePath.isNotEmpty 
+            leading: imagePath.isNotEmpty && File(imagePath).existsSync()
               ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.file(File(imagePath), width: 40, height: 40, fit: BoxFit.cover))
               : const Icon(Icons.fitness_center, size: 30),
             title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -307,7 +343,7 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
             trailing: IconButton(
               icon: const Icon(Icons.close, size: 18, color: Colors.grey),
               onPressed: () async {
-                await DbHelper.delete('planner_exercises', ex['id']);
+                await FirebaseFirestore.instance.collection('planner_exercises').doc(ex['id']).delete();
                 _loadExercises();
               },
             ),

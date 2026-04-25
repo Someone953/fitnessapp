@@ -1,6 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'db_helper.dart';
 import 'profile_screen.dart';
 import 'workout_screen.dart';
 import 'meal_logger_screen.dart';
@@ -9,16 +9,9 @@ import 'exercise_library_screen.dart';
 import 'auth_screen.dart';
 
 void main() async {
-  try {
-    WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp();
-    runApp(const FitWellApp());
-  } catch (e) {
-    debugPrint("Firebase Initialization Error: $e");
-    // Run the app anyway so it doesn't just show a black screen, 
-    // though Firebase features will fail.
-    runApp(const FitWellApp());
-  }
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const FitWellApp());
 }
 
 class FitWellApp extends StatelessWidget {
@@ -46,26 +39,28 @@ class RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<RootScreen> {
-  String? _loggedInUserId;
+  User? _user;
 
-  void _onLoginSuccess(String userId) {
-    setState(() {
-      _loggedInUserId = userId;
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      setState(() {
+        _user = user;
+      });
     });
   }
 
-  void _logout() {
-    setState(() {
-      _loggedInUserId = null;
-    });
+  void _logout() async {
+    await FirebaseAuth.instance.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loggedInUserId == null) {
-      return AuthScreen(onLoginSuccess: _onLoginSuccess);
+    if (_user == null) {
+      return const AuthScreen();
     }
-    return HomeScreen(userId: _loggedInUserId!, onLogout: _logout);
+    return HomeScreen(userId: _user!.uid, onLogout: _logout);
   }
 }
 

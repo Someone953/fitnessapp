@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'db_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WorkoutScreen extends StatefulWidget {
   final String userId;
@@ -21,7 +21,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Future<void> _loadWorkouts() async {
-    final data = await DbHelper.query('workout', userId: widget.userId);
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('workouts')
+        .where('user_id', isEqualTo: widget.userId)
+        .get();
+
+    final data = querySnapshot.docs.map((doc) {
+      final map = doc.data();
+      map['id'] = doc.id;
+      return map;
+    }).toList();
+
     setState(() {
       data.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
       _workouts = data;
@@ -29,7 +39,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _addWorkout() async {
-    await DbHelper.insert('workout', {
+    await FirebaseFirestore.instance.collection('workouts').add({
       'user_id': widget.userId,
       'title': _titleCtrl.text.isEmpty ? 'New Workout' : _titleCtrl.text,
       'sets': 4,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'db_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MealLoggerScreen extends StatefulWidget {
-  final int userId;
+  final String userId;
   const MealLoggerScreen({super.key, required this.userId});
 
   @override
@@ -24,12 +24,22 @@ class _MealLoggerScreenState extends State<MealLoggerScreen> {
 
   Future<void> _loadMeals() async {
     final today = DateTime.now().toIso8601String().substring(0, 10);
-    final data = await DbHelper.query('nutrition', where: 'user_id = ? AND date = ?', whereArgs: [widget.userId, today]);
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('nutrition')
+        .where('user_id', isEqualTo: widget.userId)
+        .where('date', isEqualTo: today)
+        .get();
+    
+    final data = querySnapshot.docs.map((doc) {
+      final map = doc.data();
+      map['id'] = doc.id;
+      return map;
+    }).toList();
     
     int cal = 0, pro = 0, carb = 0, fat = 0;
     for (var m in data) {
-      cal += (m['calories'] as num).toInt();
-      pro += (m['protein'] as num).toInt();
+      cal += (m['calories'] as num? ?? 0).toInt();
+      pro += (m['protein'] as num? ?? 0).toInt();
       carb += (m['carbs'] as num? ?? 0).toInt();
       fat += (m['fats'] as num? ?? 0).toInt();
     }
@@ -79,9 +89,9 @@ class _MealLoggerScreenState extends State<MealLoggerScreen> {
                   };
 
                   if (meal == null) {
-                    await DbHelper.insert('nutrition', data);
+                    await FirebaseFirestore.instance.collection('nutrition').add(data);
                   } else {
-                    await DbHelper.update('nutrition', data, meal['id']);
+                    await FirebaseFirestore.instance.collection('nutrition').doc(meal['id']).update(data);
                   }
                   Navigator.pop(ctx);
                   _loadMeals();
@@ -129,13 +139,13 @@ class _MealLoggerScreenState extends State<MealLoggerScreen> {
                     itemBuilder: (ctx, i) {
                       final m = _meals[i];
                       return ListTile(
-                        title: Text(m['food'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(m['food'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text('${m['calories']} kcal | P: ${m['protein']}g C: ${m['carbs']}g F: ${m['fats']}g'),
                         onTap: () => _showMealForm(m),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                           onPressed: () async {
-                            await DbHelper.delete('nutrition', m['id']);
+                            await FirebaseFirestore.instance.collection('nutrition').doc(m['id']).delete();
                             _loadMeals();
                           },
                         ),

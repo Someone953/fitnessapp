@@ -14,7 +14,8 @@ class DbHelper {
       onCreate: (db, version) async {
         await db.execute('''CREATE TABLE users (
           id INTEGER PRIMARY KEY, 
-          username TEXT UNIQUE, 
+          username TEXT, 
+          email TEXT UNIQUE,
           password TEXT
         )''');
         await db.execute('''CREATE TABLE profile (
@@ -58,12 +59,16 @@ class DbHelper {
   static Database get db => _db!;
 
   // User Auth Methods
-  static Future<int> register(String username, String password) async {
-    return await db.insert('users', {'username': username, 'password': password});
+  static Future<int> register(String email, String password, String username) async {
+    return await db.insert('users', {
+      'email': email,
+      'password': password,
+      'username': username,
+    });
   }
 
-  static Future<Map<String, dynamic>?> login(String username, String password) async {
-    final res = await db.query('users', where: 'username = ? AND password = ?', whereArgs: [username, password]);
+  static Future<Map<String, dynamic>?> login(String email, String password) async {
+    final res = await db.query('users', where: 'email = ? AND password = ?', whereArgs: [email, password]);
     return res.isNotEmpty ? res.first : null;
   }
 
@@ -72,8 +77,21 @@ class DbHelper {
   }
 
   static Future<int> insert(String table, Map<String, dynamic> data) => db.insert(table, data);
-  static Future<List<Map<String, dynamic>>> query(String table, {String? where, List<dynamic>? whereArgs}) => 
-    db.query(table, where: where, whereArgs: whereArgs, orderBy: 'id DESC');
+  static Future<List<Map<String, dynamic>>> query(String table, {int? userId, String? where, List<dynamic>? whereArgs}) {
+    String? finalWhere = where;
+    List<dynamic>? finalArgs = whereArgs;
+
+    if (userId != null) {
+      if (finalWhere == null) {
+        finalWhere = 'user_id = ?';
+        finalArgs = [userId];
+      } else {
+        finalWhere = '$finalWhere AND user_id = ?';
+        finalArgs = [...(finalArgs ?? []), userId];
+      }
+    }
+    return db.query(table, where: finalWhere, whereArgs: finalArgs, orderBy: 'id DESC');
+  }
   static Future<int> update(String table, Map<String, dynamic> data, int id) => db.update(table, data, where: 'id = ?', whereArgs: [id]);
   static Future<int> delete(String table, int id) => db.delete(table, where: 'id = ?', whereArgs: [id]);
 }

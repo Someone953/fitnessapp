@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'db_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
 
 class ProfileScreen extends StatefulWidget {
@@ -37,10 +37,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadData() async {
-    final data = await DbHelper.query('profile', userId: widget.userId);
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('profiles')
+        .where('user_id', isEqualTo: widget.userId)
+        .orderBy('date', descending: true)
+        .get();
+
+    final data = querySnapshot.docs.map((doc) => doc.data()).toList();
+
     setState(() {
-      // Sort by date locally since Firestore query was simple
-      data.sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
       _history = data;
       if (data.isNotEmpty) {
         final last = data.first; 
@@ -53,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _gender = last['gender'] ?? 'Male';
         _fitnessLevel = last['fitness_level'] ?? 'Beginner';
         _fitnessGoal = last['goal'] ?? 'Build Muscle';
-        _bmi = last['bmi'] ?? 0.0;
+        _bmi = last['bmi']?.toDouble() ?? 0.0;
         _bmiStatus = _bmi < 18.5 ? 'Underweight' : (_bmi > 25 ? 'Overweight' : 'Normal');
       }
     });
@@ -70,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _bmiStatus = bmi < 18.5 ? 'Underweight' : (bmi > 25 ? 'Overweight' : 'Normal');
     });
 
-    await DbHelper.insert('profile', {
+    await FirebaseFirestore.instance.collection('profiles').add({
       'user_id': widget.userId,
       'name': 'User',
       'age': int.tryParse(_ageCtrl.text),

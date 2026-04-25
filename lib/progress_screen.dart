@@ -4,7 +4,7 @@ import 'dart:io';
 import 'db_helper.dart';
 
 class ProgressScreen extends StatefulWidget {
-  final String userId;
+  final int userId;
   const ProgressScreen({super.key, required this.userId});
   @override
   State<ProgressScreen> createState() => _ProgressScreenState();
