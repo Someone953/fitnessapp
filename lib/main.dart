@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'db_helper.dart';
 import 'profile_screen.dart';
 import 'workout_screen.dart';
-import 'progress_screen.dart';
+import 'meal_logger_screen.dart';
+import 'planner_screen.dart';
 import 'auth_screen.dart';
 
 void main() async {
@@ -21,6 +22,7 @@ class FitWellApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.teal,
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
       ),
       home: const RootScreen(),
     );
@@ -77,8 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _screens = [
       ProfileScreen(userId: widget.userId),
+      PlannerScreen(userId: widget.userId),
       WorkoutScreen(userId: widget.userId),
-      ProgressScreen(userId: widget.userId),
+      MealLoggerScreen(userId: widget.userId),
     ];
   }
 
@@ -88,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('FitWell - SDG 3'),
         centerTitle: true,
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -99,10 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
-          BottomNavigationBarItem(icon: Icon(Icons.monitor_heart), label: 'Progress'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Planner'),
+          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Logs'),
+          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Meals'),
         ],
       ),
     );
