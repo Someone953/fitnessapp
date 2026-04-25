@@ -6,6 +6,7 @@ import 'workout_screen.dart';
 import 'meal_logger_screen.dart';
 import 'planner_screen.dart';
 import 'exercise_library_screen.dart';
+import 'dashboard_screen.dart';
 import 'auth_screen.dart';
 
 void main() async {
@@ -76,12 +77,29 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  late final List<Widget> _screens;
+  late List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    _updateScreens();
+  }
+
+  void _updateScreens() {
     _screens = [
+      DashboardScreen(
+        userId: widget.userId,
+        onCreateProfile: () {
+          setState(() {
+            _currentIndex = 1; // Navigate to Profile tab
+          });
+        },
+        onEditProfile: () {
+          setState(() {
+            _currentIndex = 1; // Navigate to Profile tab
+          });
+        },
+      ),
       ProfileScreen(userId: widget.userId),
       const ExerciseLibraryScreen(),
       PlannerScreen(userId: widget.userId),
@@ -92,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _updateScreens(); // Re-initialize screens to ensure callback is passed
     return Scaffold(
       appBar: AppBar(
         title: const Text('FitWell - SDG 3'),
@@ -112,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: Colors.teal,
         unselectedItemColor: Colors.grey,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Library'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Planner'),

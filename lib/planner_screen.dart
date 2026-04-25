@@ -49,6 +49,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               if (ctrl.text.isNotEmpty) {
                 await FirebaseFirestore.instance.collection('planner_containers').add({
                   'user_id': widget.userId,
+                  'name': ctrl.text, // Using 'name' as title or vice versa
                   'title': ctrl.text
                 });
                 Navigator.pop(ctx);
@@ -56,6 +57,33 @@ class _PlannerScreenState extends State<PlannerScreen> {
               }
             },
             child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editContainer(String id, String currentTitle) {
+    final ctrl = TextEditingController(text: currentTitle);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Workout Routine Name'),
+        content: TextField(controller: ctrl, decoration: const InputDecoration(hintText: 'e.g. Weekly Split')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              if (ctrl.text.isNotEmpty) {
+                await FirebaseFirestore.instance.collection('planner_containers').doc(id).update({
+                  'title': ctrl.text,
+                  'name': ctrl.text
+                });
+                Navigator.pop(ctx);
+                _loadContainers();
+              }
+            },
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -88,6 +116,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(child: Text(container['title'] ?? 'Routine', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.white70),
+                            onPressed: () => _editContainer(container['id'], container['title'] ?? ''),
+                          ),
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.white70),
                             onPressed: () async {
@@ -146,28 +178,64 @@ class _BlockListState extends State<BlockList> {
   }
 
   void _addBlock() {
-    final ctrl = TextEditingController();
+    String selectedDay = 'Monday';
+    final muscleCtrl = TextEditingController();
+    final exNameCtrl = TextEditingController();
+    final repsCtrl = TextEditingController();
+    final List<String> days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Category Block'),
-        content: TextField(controller: ctrl, decoration: const InputDecoration(hintText: 'e.g. Monday - Chest, Full Body')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              if (ctrl.text.isNotEmpty) {
-                await FirebaseFirestore.instance.collection('planner_blocks').add({
-                  'container_id': widget.containerId,
-                  'title': ctrl.text
-                });
-                Navigator.pop(ctx);
-                _loadBlocks();
-              }
-            },
-            child: const Text('Add'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add Workout Day'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedDay,
+                  decoration: const InputDecoration(labelText: 'Day of the Week'),
+                  items: days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                  onChanged: (val) => setModalState(() => selectedDay = val!),
+                ),
+                TextField(controller: muscleCtrl, decoration: const InputDecoration(labelText: 'Muscle Group (e.g. Chest)')),
+                const Divider(height: 30),
+                const Text('First Exercise', style: TextStyle(fontWeight: FontWeight.bold)),
+                TextField(controller: exNameCtrl, decoration: const InputDecoration(labelText: 'Exercise Name')),
+                TextField(controller: repsCtrl, decoration: const InputDecoration(labelText: 'Reps'), keyboardType: TextInputType.number),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () async {
+                if (muscleCtrl.text.isNotEmpty) {
+                  final blockRef = await FirebaseFirestore.instance.collection('planner_blocks').add({
+                    'container_id': widget.containerId,
+                    'title': '$selectedDay - ${muscleCtrl.text}'
+                  });
+                  
+                  if (exNameCtrl.text.isNotEmpty) {
+                    await FirebaseFirestore.instance.collection('planner_exercises').add({
+                      'block_id': blockRef.id,
+                      'name': exNameCtrl.text,
+                      'description': '',
+                      'sets': 0,
+                      'reps': int.tryParse(repsCtrl.text) ?? 0,
+                      'image_path': ''
+                    });
+                  }
+                  
+                  Navigator.pop(ctx);
+                  _loadBlocks();
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }
