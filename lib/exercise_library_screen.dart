@@ -22,7 +22,7 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
 
   Future<void> _fetchExercises() async {
     try {
-      final response = await http.get(Uri.parse('https://wger.de/api/v2/exercise/?language=2&status=2'));
+      final response = await http.get(Uri.parse('https://wger.de/api/v2/exerciseinfo/?language=2&status=2'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -70,8 +70,20 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                     final ex = _exercises[i];
                     if (ex == null) return const SizedBox.shrink();
                     
-                    final String name = ex['name']?.toString() ?? 'Unknown Exercise';
-                    final String description = _stripHtml(ex['description']?.toString());
+                    String name = 'Unknown Exercise';
+                    String description = 'No description available';
+
+                    // wger API stores text in a translations list
+                    final translations = ex['translations'] as List<dynamic>?;
+                    if (translations != null && translations.isNotEmpty) {
+                      // Try to find English (language 2), fallback to first available
+                      final translation = translations.firstWhere(
+                        (t) => t['language'] == 2,
+                        orElse: () => translations[0],
+                      );
+                      name = translation['name']?.toString() ?? name;
+                      description = _stripHtml(translation['description']?.toString());
+                    }
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
