@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
+import 'notification_service.dart';
 
 class PlannerScreen extends StatefulWidget {
   final String userId;
@@ -26,13 +27,51 @@ class _PlannerScreenState extends State<PlannerScreen> {
         .where('user_id', isEqualTo: widget.userId)
         .get();
     
+    final containers = querySnapshot.docs.map((doc) {
+      final map = doc.data();
+      map['id'] = doc.id;
+      return map;
+    }).toList();
+
     setState(() {
-      _containers = querySnapshot.docs.map((doc) {
-        final map = doc.data();
-        map['id'] = doc.id;
-        return map;
-      }).toList();
+      _containers = containers;
     });
+
+    _rescheduleNotifications(containers);
+  }
+
+  Future<void> _rescheduleNotifications(List<Map<String, dynamic>> containers) async {
+    final ns = NotificationService();
+    await ns.cancelAll();
+
+    final Map<String, int> dayMap = {
+      'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+      'Friday': 5, 'Saturday': 6, 'Sunday': 7
+    };
+
+    int notificationId = 0;
+    for (var container in containers) {
+      final blocksSnapshot = await FirebaseFirestore.instance
+          .collection('planner_blocks')
+          .where('container_id', isEqualTo: container['id'])
+          .get();
+
+      for (var blockDoc in blocksSnapshot.docs) {
+        final title = blockDoc.data()['title'] as String? ?? '';
+        for (var day in dayMap.keys) {
+          if (title.contains(day)) {
+            await ns.scheduleWeeklyNotification(
+              id: notificationId++,
+              title: 'Workout Time!',
+              body: 'Time for your scheduled workout: $title',
+              dayOfWeek: dayMap[day]!,
+              hour: 8, // Default to 8 AM
+              minute: 0,
+            );
+          }
+        }
+      }
+    }
   }
 
   void _addContainer() {

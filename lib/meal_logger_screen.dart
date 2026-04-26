@@ -78,13 +78,18 @@ class _MealLoggerScreenState extends State<MealLoggerScreen> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
+                  final cal = double.tryParse(calCtrl.text) ?? 0.0;
+                  final pro = double.tryParse(proCtrl.text) ?? 0.0;
+                  final carb = double.tryParse(carbCtrl.text) ?? 0.0;
+                  final fat = double.tryParse(fatCtrl.text) ?? 0.0;
+
                   final data = {
                     'user_id': widget.userId,
                     'food': foodCtrl.text,
-                    'calories': double.tryParse(calCtrl.text) ?? 0.0,
-                    'protein': double.tryParse(proCtrl.text) ?? 0.0,
-                    'carbs': double.tryParse(carbCtrl.text) ?? 0.0,
-                    'fats': double.tryParse(fatCtrl.text) ?? 0.0,
+                    'calories': double.parse(cal.toStringAsFixed(2)),
+                    'protein': double.parse(pro.toStringAsFixed(2)),
+                    'carbs': double.parse(carb.toStringAsFixed(2)),
+                    'fats': double.parse(fat.toStringAsFixed(2)),
                     'date': meal?['date'] ?? DateTime.now().toIso8601String().substring(0, 10),
                   };
 

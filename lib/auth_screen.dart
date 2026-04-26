@@ -32,6 +32,14 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('invalid email format')),
+      );
+      return;
+    }
+
     if (!_isLogin) {
       if (password.length < 7) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password must be at least 7 characters')));
@@ -141,7 +149,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       elevation: 0,
                     ),
                     child: Text(
-                      _isLogin ? 'Start Session' : 'Register',
+                      _isLogin ? 'Login' : 'Register',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),

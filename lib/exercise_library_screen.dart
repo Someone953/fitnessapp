@@ -68,33 +68,99 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   }
 
   void _showExerciseDetails(Map<String, dynamic> ex, String name, String description, String? imageUrl) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(name),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (imageUrl != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Image.network(imageUrl, height: 150, fit: BoxFit.contain),
-                ),
-              Text(description),
-              const SizedBox(height: 10),
-              if (ex['category'] != null)
-                Chip(
-                  label: Text('Category: ${ex['category']['name']}'),
-                  backgroundColor: const Color(0xFFD0FD3E).withOpacity(0.2),
-                  labelStyle: const TextStyle(color: Color(0xFFD0FD3E)),
-                ),
-            ],
-          ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C2025),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-        ],
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (imageUrl != null)
+                      Center(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Image.network(
+                            imageUrl,
+                            height: 200,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.fitness_center, size: 80, color: Color(0xFFD0FD3E)),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+                    Text(
+                      name,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFFD0FD3E)),
+                    ),
+                    const SizedBox(height: 8),
+                    if (ex['category'] != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD0FD3E).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          ex['category']['name'],
+                          style: const TextStyle(color: Color(0xFFD0FD3E), fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Instructions',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      description,
+                      style: const TextStyle(fontSize: 15, color: Colors.white70, height: 1.5),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD0FD3E),
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Back to Library', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
