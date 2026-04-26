@@ -73,8 +73,14 @@ class _AuthScreenState extends State<AuthScreen> {
         });
       }
     } on FirebaseAuthException catch (e) {
+      String message = e.message ?? 'Authentication failed';
+      if (e.code == 'wrong-password') {
+        message = 'invalid password';
+      } else if (e.code == 'user-not-found' || e.code == 'invalid-email') {
+        message = 'invalid email';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Authentication failed')),
+        SnackBar(content: Text(message)),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
