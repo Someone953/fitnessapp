@@ -20,12 +20,39 @@ class FitWellApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FitWell - SDG 3',
+      title: 'myFitLah',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.teal,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF121417),
+        primaryColor: const Color(0xFFD0FD3E),
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFD0FD3E),
+          brightness: Brightness.dark,
+          primary: const Color(0xFFD0FD3E),
+          surface: const Color(0xFF1C2025),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF121417),
+          elevation: 0,
+          centerTitle: false,
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF1C2025),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Color(0xFF1C2025),
+          selectedItemColor: Color(0xFFD0FD3E),
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+        ),
       ),
       home: const RootScreen(),
     );
@@ -108,35 +135,118 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
+  String _getPageTitle() {
+    switch (_currentIndex) {
+      case 0: return 'Dashboard';
+      case 1: return 'My Profile';
+      case 2: return 'Exercise Library';
+      case 3: return 'Workout Planner';
+      case 4: return 'Workout Logs';
+      case 5: return 'Meal Tracker';
+      default: return 'myFitLah';
+    }
+  }
+
+  String _getPageSubtitle() {
+    if (_currentIndex == 2) return 'Explore our database of exercises';
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
-    _updateScreens(); // Re-initialize screens to ensure callback is passed
+    _updateScreens();
+    final subtitle = _getPageSubtitle();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FitWell - SDG 3'),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: widget.onLogout,
-          )
-        ],
+        toolbarHeight: subtitle.isNotEmpty ? 140 : 120,
+        flexibleSpace: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD0FD3E).withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.fitness_center_rounded,
+                        color: Color(0xFFD0FD3E),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'myFitLah',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 22,
+                              letterSpacing: -0.5,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          const Text(
+                            'Your Fitness Companion',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.logout, color: Colors.white70, size: 20),
+                      onPressed: widget.onLogout,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              if (_currentIndex > 1)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getPageTitle(),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      if (subtitle.isNotEmpty)
+                        Text(
+                          subtitle,
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Library'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Planner'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Logs'),
-          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Meals'),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.menu_book_rounded), label: 'Library'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month_rounded), label: 'Planner'),
+          BottomNavigationBarItem(icon: Icon(Icons.fitness_center_rounded), label: 'Logs'),
+          BottomNavigationBarItem(icon: Icon(Icons.restaurant_rounded), label: 'Meals'),
         ],
       ),
     );

@@ -98,12 +98,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _saveProfile() async {
     if (_weightCtrl.text.isEmpty || _heightCtrl.text.isEmpty || _nameCtrl.text.isEmpty) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all required fields')));
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(
+           content: const Text('Please fill all required fields', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+           backgroundColor: const Color(0xFFD0FD3E),
+           behavior: SnackBarBehavior.floating,
+           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+         )
+       );
        return;
     }
     
-    final weight = double.tryParse(_weightCtrl.text) ?? 0;
-    final height = double.tryParse(_heightCtrl.text) ?? 1;
+    final ageRaw = int.tryParse(_ageCtrl.text);
+    if (ageRaw == null && _ageCtrl.text.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Age must be a whole number')));
+      return;
+    }
+
+    final weightRaw = double.tryParse(_weightCtrl.text);
+    final heightRaw = double.tryParse(_heightCtrl.text);
+    final targetRaw = double.tryParse(_weightTargetCtrl.text);
+
+    if (weightRaw == null || heightRaw == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight and Height must be numbers')));
+      return;
+    }
+
+    final weight = double.parse(weightRaw.toStringAsFixed(2));
+    final height = double.parse(heightRaw.toStringAsFixed(2));
+    final target = targetRaw != null ? double.parse(targetRaw.toStringAsFixed(2)) : null;
     final bmi = weight / pow(height, 2);
 
     setState(() {
@@ -114,14 +137,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await FirebaseFirestore.instance.collection('profiles').add({
       'user_id': widget.userId,
       'name': _nameCtrl.text,
-      'age': int.tryParse(_ageCtrl.text),
+      'age': ageRaw,
       'gender': _gender,
       'weight': weight,
       'height': height,
       'bmi': bmi,
       'fitness_level': _fitnessLevel,
       'goals': _selectedGoals,
-      'weight_target': double.tryParse(_weightTargetCtrl.text),
+      'weight_target': target,
       'profile_image': _imagePath ?? '',
       'date': DateTime.now().toIso8601String().substring(0, 10)
     });
@@ -130,7 +153,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isEditing = false);
     
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Saved')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Profile Saved', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          backgroundColor: const Color(0xFFD0FD3E),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        )
+      );
     }
   }
 
@@ -139,21 +169,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          if (!_isEditing && _history.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-            )
-        ],
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'My Profile',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFFD0FD3E),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                if (!_isEditing) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => setState(() => _isEditing = true),
+                    icon: const Icon(Icons.edit, color: Color(0xFFD0FD3E), size: 20),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
             if (_isEditing) _buildEditForm() else _buildInfoView(),
             const SizedBox(height: 20),
           ],
@@ -166,8 +208,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_history.isEmpty) return const Center(child: Text("No profile found."));
     
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: 0,
+      color: const Color(0xFF1C2025),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -178,16 +221,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: Colors.teal,
+                    backgroundColor: const Color(0xFFD0FD3E).withOpacity(0.2),
                     backgroundImage: (_imagePath != null && _imagePath!.isNotEmpty && File(_imagePath!).existsSync()) 
                         ? FileImage(File(_imagePath!)) 
                         : null,
                     child: (_imagePath == null || _imagePath!.isEmpty || !File(_imagePath!).existsSync())
-                        ? const Icon(Icons.person, size: 60, color: Colors.white)
+                        ? const Icon(Icons.person, size: 60, color: Color(0xFFD0FD3E))
                         : null,
                   ),
-                  const SizedBox(height: 10),
-                  Text(_nameCtrl.text, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Text(_nameCtrl.text, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
                 ],
               ),
             ),
@@ -203,13 +246,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 5),
             Wrap(
               spacing: 8,
-              children: _selectedGoals.map((g) => Chip(label: Text(g), backgroundColor: Colors.teal.shade50)).toList(),
+              children: _selectedGoals.map((g) => Chip(
+                label: Text(g, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)), 
+                backgroundColor: const Color(0xFFD0FD3E),
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              )).toList(),
             ),
-            const Divider(height: 30),
+            const Divider(height: 30, color: Colors.white10),
             Center(
               child: Text(
                 'Current BMI: ${_bmi.toStringAsFixed(2)} ($_bmiStatus)',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD0FD3E)),
               ),
             ),
           ],
@@ -223,11 +271,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.teal, size: 20),
+          Icon(icon, color: const Color(0xFFD0FD3E), size: 20),
           const SizedBox(width: 15),
-          Text('$label:', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+          Text('$label:', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16, color: Colors.grey)),
           const SizedBox(width: 10),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 16), textAlign: TextAlign.right)),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 16, color: Colors.white), textAlign: TextAlign.right)),
         ],
       ),
     );
@@ -237,14 +285,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Edit User Profile', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text('Edit User Profile', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
         const SizedBox(height: 15),
         Center(
           child: Stack(
             children: [
               CircleAvatar(
                 radius: 50,
-                backgroundColor: Colors.grey.shade200,
+                backgroundColor: const Color(0xFF1C2025),
                 backgroundImage: (_imagePath != null && _imagePath!.isNotEmpty && File(_imagePath!).existsSync()) 
                     ? FileImage(File(_imagePath!)) 
                     : null,
@@ -256,10 +304,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 bottom: 0,
                 right: 0,
                 child: CircleAvatar(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: const Color(0xFFD0FD3E),
                   radius: 18,
                   child: IconButton(
-                    icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                    icon: const Icon(Icons.camera_alt, size: 18, color: Colors.black),
                     onPressed: _pickImage,
                   ),
                 ),
@@ -300,7 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: TextField(
                 controller: _weightCtrl,
                 decoration: const InputDecoration(labelText: 'Weight (kg)', border: OutlineInputBorder()),
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
             ),
             const SizedBox(width: 10),
@@ -308,7 +356,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: TextField(
                 controller: _heightCtrl,
                 decoration: const InputDecoration(labelText: 'Height (m)', border: OutlineInputBorder()),
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
             ),
           ],
@@ -326,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         TextField(
           controller: _weightTargetCtrl,
           decoration: const InputDecoration(labelText: 'Weight Target (kg)', border: OutlineInputBorder()),
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
         const SizedBox(height: 15),
         const Text('Fitness Goals', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
@@ -335,7 +383,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: _fitnessGoalsOptions.map((goal) {
             final isSelected = _selectedGoals.contains(goal);
             return FilterChip(
-              label: Text(goal),
+              label: Text(goal, style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
               selected: isSelected,
               onSelected: (bool selected) {
                 setState(() {
@@ -346,8 +394,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   }
                 });
               },
-              selectedColor: Colors.teal.shade200,
-              checkmarkColor: Colors.teal,
+              selectedColor: const Color(0xFFD0FD3E),
+              checkmarkColor: Colors.black,
+              backgroundColor: const Color(0xFF1C2025),
+              side: BorderSide(color: isSelected ? Colors.transparent : Colors.white24),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             );
           }).toList(),
         ),
@@ -358,7 +409,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => setState(() => _isEditing = false),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    side: const BorderSide(color: Colors.white24),
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Cancel'),
                 ),
               ),
@@ -366,7 +421,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: ElevatedButton(
                 onPressed: _saveProfile,
-                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  backgroundColor: const Color(0xFFD0FD3E),
+                  foregroundColor: Colors.black,
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 child: const Text('Save Profile'),
               ),
             ),

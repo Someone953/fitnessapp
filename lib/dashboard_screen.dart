@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
+import 'dart:io';
 
 class DashboardScreen extends StatefulWidget {
   final String userId;
@@ -22,6 +23,55 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final _weightPromptCtrl = TextEditingController();
   final _goalWeightCtrl = TextEditingController();
+  
+  double _todayCalories = 0;
+  double _todayProtein = 0;
+  double _todayCarbs = 0;
+  double _todayFats = 0;
+  int _todayWorkouts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodayStats();
+  }
+
+  Future<void> _loadTodayStats() async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    
+    // Load nutrition
+    final nutritionSnapshot = await FirebaseFirestore.instance
+        .collection('nutrition')
+        .where('user_id', isEqualTo: widget.userId)
+        .where('date', isEqualTo: today)
+        .get();
+        
+    double cal = 0, pro = 0, carb = 0, fat = 0;
+    for (var doc in nutritionSnapshot.docs) {
+      final d = doc.data();
+      cal += (d['calories'] as num? ?? 0).toDouble();
+      pro += (d['protein'] as num? ?? 0).toDouble();
+      carb += (d['carbs'] as num? ?? 0).toDouble();
+      fat += (d['fats'] as num? ?? 0).toDouble();
+    }
+    
+    // Load workouts
+    final workoutSnapshot = await FirebaseFirestore.instance
+        .collection('workout_logs')
+        .where('user_id', isEqualTo: widget.userId)
+        .where('date', isEqualTo: today)
+        .get();
+
+    if (mounted) {
+      setState(() {
+        _todayCalories = cal;
+        _todayProtein = pro;
+        _todayCarbs = carb;
+        _todayFats = fat;
+        _todayWorkouts = workoutSnapshot.docs.length;
+      });
+    }
+  }
 
   Future<void> _saveWeightUpdate(double weight, Map<String, dynamic> profile) async {
     final weightNum = weight.toDouble();
@@ -59,7 +109,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight progress updated!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Weight progress updated!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          backgroundColor: const Color(0xFFD0FD3E),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
     }
   }
 
@@ -76,7 +133,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (query.docs.isNotEmpty) {
       await query.docs.first.reference.update({'weight_target': target});
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Goal weight updated!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Goal weight updated!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            backgroundColor: const Color(0xFFD0FD3E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
       }
     }
   }
@@ -101,12 +165,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Profile Name')),
-                TextField(controller: ageCtrl, decoration: const InputDecoration(labelText: 'Age'), keyboardType: TextInputType.number),
+                TextField(
+                  controller: ageCtrl, 
+                  decoration: const InputDecoration(labelText: 'Age'), 
+                  keyboardType: TextInputType.number,
+                ),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: weightCtrl, decoration: const InputDecoration(labelText: 'Weight (kg)'), keyboardType: TextInputType.number)),
+                    Expanded(
+                      child: TextField(
+                        controller: weightCtrl, 
+                        decoration: const InputDecoration(labelText: 'Weight (kg)'), 
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      )
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: heightCtrl, decoration: const InputDecoration(labelText: 'Height (m)'), keyboardType: TextInputType.number)),
+                    Expanded(
+                      child: TextField(
+                        controller: heightCtrl, 
+                        decoration: const InputDecoration(labelText: 'Height (m)'), 
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      )
+                    ),
                   ],
                 ),
                 DropdownButtonFormField<String>(
@@ -128,8 +208,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: ['Lose Weight', 'Build Muscle', 'Improve Stamina'].map((goal) {
                     final isSelected = selectedGoals.contains(goal);
                     return FilterChip(
-                      label: Text(goal, style: const TextStyle(fontSize: 12)),
+                      label: Text(goal, style: TextStyle(fontSize: 12, color: isSelected ? Colors.black : Colors.white)),
                       selected: isSelected,
+                      selectedColor: const Color(0xFFD0FD3E),
+                      checkmarkColor: Colors.black,
                       onSelected: (selected) {
                         setModalState(() {
                           if (selected) selectedGoals.add(goal);
@@ -143,22 +225,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx), 
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70))
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (nameCtrl.text.isEmpty || weightCtrl.text.isEmpty || heightCtrl.text.isEmpty) return;
                 
-                final w = double.tryParse(weightCtrl.text) ?? 0;
-                final h = double.tryParse(heightCtrl.text) ?? 1;
-                final bmi = w / pow(h, 2);
+                final age = int.tryParse(ageCtrl.text);
+                if (age == null && ageCtrl.text.isNotEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Age must be a whole number')));
+                  return;
+                }
+
+                final w = double.tryParse(weightCtrl.text);
+                final h = double.tryParse(heightCtrl.text);
+                if (w == null || h == null) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight and Height must be numbers')));
+                   return;
+                }
+                
+                final weight = double.parse(w.toStringAsFixed(2));
+                final height = double.parse(h.toStringAsFixed(2));
+                final bmi = weight / pow(height, 2);
 
                 await FirebaseFirestore.instance.collection('profiles').add({
                   'user_id': widget.userId,
                   'name': nameCtrl.text,
-                  'age': int.tryParse(ageCtrl.text),
+                  'age': age,
                   'gender': gender,
-                  'weight': w,
-                  'height': h,
+                  'weight': weight,
+                  'height': height,
                   'bmi': bmi,
                   'fitness_level': fitnessLevel,
                   'goals': selectedGoals,
@@ -167,7 +265,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 });
                 Navigator.pop(ctx);
               },
-              child: const Text('Save Profile'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD0FD3E),
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('Save Profile', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -192,11 +294,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.person_add, size: 80, color: Colors.teal),
+                const Icon(Icons.person_add, size: 80, color: Color(0xFFD0FD3E)),
                 const SizedBox(height: 20),
                 const Text(
-                  'Welcome to FitWell!',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  'Welcome to myFitLah!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 10),
                 const Text(
@@ -208,7 +310,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ElevatedButton(
                   onPressed: () => _showCreateProfilePopUp(context),
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD0FD3E),
+                    foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   child: const Text('Create Profile'),
                 ),
@@ -234,6 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
 
         final profile = docs.first.data() as Map<String, dynamic>;
+        final profileImage = profile['profile_image'] as String?;
 
         if (_goalWeightCtrl.text.isEmpty && profile['weight_target'] != null) {
           _goalWeightCtrl.text = profile['weight_target'].toString();
@@ -247,17 +353,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildHeader(profile),
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.teal),
-                    onPressed: widget.onEditProfile,
-                    tooltip: 'Edit Profile',
-                  ),
-                ],
+              Center(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: const Color(0xFFD0FD3E).withOpacity(0.2),
+                      backgroundImage: (profileImage != null && profileImage.isNotEmpty && File(profileImage).existsSync())
+                          ? FileImage(File(profileImage))
+                          : null,
+                      child: (profileImage == null || profileImage.isEmpty || !File(profileImage).existsSync())
+                          ? const Icon(Icons.person, size: 40, color: Color(0xFFD0FD3E))
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Check your STATS',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFD0FD3E),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 20),
+              _buildHeader(profile),
+              const SizedBox(height: 20),
+              _buildTodaySummary(),
               const SizedBox(height: 20),
               _buildStatsCard(profile),
               const SizedBox(height: 20),
@@ -297,7 +422,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final recentData = data.length > 10 ? data.sublist(data.length - 10) : data;
 
     return Card(
-      elevation: 2,
+      elevation: 0,
+      color: const Color(0xFF1C2025),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 32, 24, 16),
@@ -309,13 +435,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 LineChartBarData(
                   spots: recentData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), (e.value['weight'] as num).toDouble())).toList(),
                   isCurved: true,
-                  color: Colors.teal,
+                  color: const Color(0xFFD0FD3E),
                   barWidth: 4,
                   isStrokeCapRound: true,
                   dotData: const FlDotData(show: true),
                   belowBarData: BarAreaData(
                     show: true, 
-                    color: Colors.teal.withOpacity(0.15)
+                    color: const Color(0xFFD0FD3E).withOpacity(0.1)
                   ),
                 ),
               ],
@@ -323,14 +449,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 horizontalLines: targetWeight != null ? [
                   HorizontalLine(
                     y: (targetWeight as num).toDouble(),
-                    color: Colors.redAccent.withOpacity(0.6),
-                    strokeWidth: 2,
+                    color: Colors.white.withOpacity(0.4),
+                    strokeWidth: 1,
                     dashArray: [8, 4],
                     label: HorizontalLineLabel(
                       show: true,
                       alignment: Alignment.topRight,
                       padding: const EdgeInsets.only(right: 5, bottom: 5),
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
                       labelResolver: (line) => 'Goal: ${line.y}kg',
                     ),
                   ),
@@ -343,36 +469,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true, 
-                    reservedSize: 45,
+                    reservedSize: 40,
                     getTitlesWidget: (value, meta) => Text('${value.toInt()}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                   )
                 ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 40,
+                    reservedSize: 30,
                     interval: 1,
                     getTitlesWidget: (value, meta) {
                       int index = value.toInt();
                       if (index >= 0 && index < recentData.length) {
-                        bool isLast = index == recentData.length - 1;
-                        bool isFirst = index == 0;
-                        if (!isFirst && !isLast && index % 2 != 0) return const SizedBox.shrink();
-
                         String dateStr = recentData[index]['date'].toString();
                         String date = dateStr.length >= 10 ? dateStr.substring(5) : dateStr;
-                        
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            date, 
-                            style: TextStyle(
-                              fontSize: 10, 
-                              color: isLast ? Colors.teal : Colors.grey,
-                              fontWeight: isLast ? FontWeight.bold : FontWeight.normal
-                            )
-                          ),
-                        );
+                        return Text(date, style: const TextStyle(fontSize: 9, color: Colors.grey));
                       }
                       return const SizedBox.shrink();
                     },
@@ -382,20 +493,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               gridData: FlGridData(
                 show: true, 
                 drawVerticalLine: false,
-                getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                getDrawingHorizontalLine: (value) => FlLine(color: Colors.white.withOpacity(0.05), strokeWidth: 1),
               ),
-              borderData: FlBorderData(
-                show: true, 
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300),
-                  left: BorderSide(color: Colors.grey.shade300),
-                )
-              ),
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (spots) => spots.map((s) => LineTooltipItem('${s.y} kg', const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))).toList(),
-                )
-              ),
+              borderData: FlBorderData(show: false),
             ),
           ),
         ),
@@ -404,75 +504,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildWeightPromptWidget(Map<String, dynamic> profile, bool weightLoggedToday) {
-    final themeColor = weightLoggedToday ? Colors.teal : Colors.orange;
-    final bgColor = weightLoggedToday ? Colors.teal.shade50 : Colors.orange.shade50;
-    final borderColor = weightLoggedToday ? Colors.teal.shade200 : Colors.orange.shade200;
+    final themeColor = const Color(0xFFD0FD3E);
+    final bgColor = const Color(0xFF1C2025);
 
-    return Card(
-      color: bgColor,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: borderColor),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.monitor_weight, color: themeColor),
-                const SizedBox(width: 8),
-                Text(
-                  weightLoggedToday ? 'Current Weight Logged' : 'Weight Progress Tracker', 
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor)
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your latest weight: ${profile['weight']} kg. Log your weight to update your profile and chart.',
-              style: TextStyle(color: themeColor.withOpacity(0.8)),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _weightPromptCtrl,
-                    decoration: InputDecoration(
-                      hintText: '${profile['weight']} kg',
-                      isDense: true,
-                      border: const OutlineInputBorder(),
-                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: themeColor)),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () async {
-                    final newWeight = double.tryParse(_weightPromptCtrl.text);
-                    if (newWeight != null) {
-                      await _saveWeightUpdate(newWeight, profile);
-                      _weightPromptCtrl.clear();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: themeColor, foregroundColor: Colors.white),
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
-            if (!weightLoggedToday) ...[
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => _saveWeightUpdate((profile['weight'] as num).toDouble(), profile),
-                child: Text('Log last weight (${profile['weight']} kg) instead', style: TextStyle(color: themeColor)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.monitor_weight, color: themeColor),
+              const SizedBox(width: 8),
+              Text(
+                weightLoggedToday ? 'Weight Logged' : 'Log Daily Weight', 
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)
               ),
-            ]
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Keep track of your progress. Your current goal is ${profile['weight_target'] ?? 'not set'} kg.',
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _weightPromptCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Enter weight (kg)',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.black.withOpacity(0.2),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () async {
+                  final rawWeight = double.tryParse(_weightPromptCtrl.text);
+                  if (rawWeight != null) {
+                    final weight = double.parse(rawWeight.toStringAsFixed(2));
+                    await _saveWeightUpdate(weight, profile);
+                    _weightPromptCtrl.clear();
+                  } else if (_weightPromptCtrl.text.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight must be a number')));
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: themeColor,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                ),
+                child: const Text('Log', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -483,39 +583,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Text(
           'Hello, ${profile['name'] ?? 'User'}!',
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.teal),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         const Text(
-          'Here is your fitness overview',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+          'Your fitness journey looks good!',
+          style: TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ],
     );
   }
 
   Widget _buildStatsCard(Map<String, dynamic> profile) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _statColumn('Weight', '${profile['weight']} kg'),
-                _statColumn('Height', '${profile['height']} m'),
-                _statColumn('BMI', profile['bmi']?.toStringAsFixed(1) ?? '0.0'),
-              ],
-            ),
-            const Divider(height: 30),
-            Text(
-              'Fitness Level: ${profile['fitness_level'] ?? 'N/A'}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2025),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _statColumn('Weight', '${profile['weight']} kg'),
+              _statColumn('Height', '${profile['height']} m'),
+              _statColumn('BMI', profile['bmi']?.toStringAsFixed(1) ?? '0.0'),
+            ],
+          ),
+          const Divider(height: 30, color: Colors.white10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.bolt, color: Color(0xFFD0FD3E), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Fitness Level: ${profile['fitness_level'] ?? 'N/A'}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -526,50 +633,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Your Current Goals',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          'Goals Tracker',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        const SizedBox(height: 10),
-        if (goals.isEmpty)
-          const Text('No goals set yet.')
-        else
+        const SizedBox(height: 12),
+        if (goals.isNotEmpty)
           Wrap(
             spacing: 8,
-            children: goals.map((goal) => Chip(
-              label: Text(goal.toString()),
-              backgroundColor: Colors.teal.shade50,
-              side: BorderSide(color: Colors.teal.shade200),
+            runSpacing: 8,
+            children: goals.map((goal) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD0FD3E).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFD0FD3E).withOpacity(0.3)),
+              ),
+              child: Text(
+                goal.toString(),
+                style: const TextStyle(color: Color(0xFFD0FD3E), fontSize: 12, fontWeight: FontWeight.bold),
+              ),
             )).toList(),
           ),
-        const SizedBox(height: 15),
-        Row(
-          children: [
-            const Icon(Icons.track_changes, color: Colors.teal, size: 20),
-            const SizedBox(width: 8),
-            const Text('Goal Weight: ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-            const SizedBox(width: 5),
-            SizedBox(
-              width: 80,
-              child: TextField(
-                controller: _goalWeightCtrl,
-                decoration: const InputDecoration(
-                  isDense: true,
-                  hintText: 'kg',
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.flag_rounded, color: Color(0xFFD0FD3E), size: 20),
+              const SizedBox(width: 12),
+              const Text('Target Weight', style: TextStyle(color: Colors.white70)),
+              const Spacer(),
+              SizedBox(
+                width: 60,
+                child: TextField(
+                  controller: _goalWeightCtrl,
+                  style: const TextStyle(color: Color(0xFFD0FD3E), fontWeight: FontWeight.bold),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: '---',
+                    hintStyle: TextStyle(color: Colors.grey),
+                    border: InputBorder.none,
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onSubmitted: (val) {
+                    final raw = double.tryParse(val);
+                    if (raw != null) {
+                      _updateGoalWeight(double.parse(raw.toStringAsFixed(2)), profile);
+                    }
+                  },
                 ),
-                keyboardType: TextInputType.number,
-                onSubmitted: (val) => _updateGoalWeight(double.tryParse(val), profile),
               ),
-            ),
-            const SizedBox(width: 5),
-            const Text('kg', style: TextStyle(fontSize: 16)),
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.check_circle_outline, color: Colors.teal),
-              onPressed: () => _updateGoalWeight(double.tryParse(_goalWeightCtrl.text), profile),
-              tooltip: 'Update Goal',
-            )
-          ],
+              const Text('kg', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            ],
+          ),
         ),
       ],
     );
@@ -578,8 +698,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _statColumn(String label, String value) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.grey)),
+        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _buildTodaySummary() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2025),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD0FD3E).withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Today's Summary", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Color(0xFFD0FD3E), size: 18),
+                onPressed: _loadTodayStats,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _summaryItem('Cals', _todayCalories, 'kcal'),
+              _summaryItem('Pro', _todayProtein, 'g'),
+              _summaryItem('Workouts', _todayWorkouts.toDouble(), 'Done', isInt: true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryItem(String label, double value, String unit, {bool isInt = false}) {
+    return Column(
+      children: [
+        Text(
+          isInt ? value.toInt().toString() : value.toStringAsFixed(1),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD0FD3E)),
+        ),
+        Text(unit, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.white70)),
       ],
     );
   }

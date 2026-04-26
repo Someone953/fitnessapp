@@ -54,6 +54,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 });
                 Navigator.pop(ctx);
                 _loadContainers();
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Routine created!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      backgroundColor: const Color(0xFFD0FD3E),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    )
+                  );
+                }
               }
             },
             child: const Text('Create'),
@@ -81,6 +92,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 });
                 Navigator.pop(ctx);
                 _loadContainers();
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Routine updated!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      backgroundColor: const Color(0xFFD0FD3E),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    )
+                  );
+                }
               }
             },
             child: const Text('Save'),
@@ -101,27 +123,27 @@ class _PlannerScreenState extends State<PlannerScreen> {
             itemBuilder: (ctx, i) {
               final container = _containers[i];
               return Card(
-                elevation: 3,
+                elevation: 0,
                 margin: const EdgeInsets.only(bottom: 20),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.shade700,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD0FD3E),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: Text(container['title'] ?? 'Routine', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+                          Expanded(child: Text(container['title'] ?? 'Routine', style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold))),
                           IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.white70),
+                            icon: const Icon(Icons.edit, color: Colors.black87, size: 20),
                             onPressed: () => _editContainer(container['id'], container['title'] ?? ''),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.white70),
+                            icon: const Icon(Icons.delete, color: Colors.black87, size: 20),
                             onPressed: () async {
                               await FirebaseFirestore.instance.collection('planner_containers').doc(container['id']).delete();
                               _loadContainers();
@@ -138,8 +160,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
           ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addContainer,
-        backgroundColor: Colors.teal,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: const Color(0xFFD0FD3E),
+        child: const Icon(Icons.add, color: Colors.black),
       ),
     );
   }
@@ -180,8 +202,6 @@ class _BlockListState extends State<BlockList> {
   void _addBlock() {
     String selectedDay = 'Monday';
     final muscleCtrl = TextEditingController();
-    final exNameCtrl = TextEditingController();
-    final repsCtrl = TextEditingController();
     final List<String> days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     showDialog(
@@ -200,10 +220,6 @@ class _BlockListState extends State<BlockList> {
                   onChanged: (val) => setModalState(() => selectedDay = val!),
                 ),
                 TextField(controller: muscleCtrl, decoration: const InputDecoration(labelText: 'Muscle Group (e.g. Chest)')),
-                const Divider(height: 30),
-                const Text('First Exercise', style: TextStyle(fontWeight: FontWeight.bold)),
-                TextField(controller: exNameCtrl, decoration: const InputDecoration(labelText: 'Exercise Name')),
-                TextField(controller: repsCtrl, decoration: const InputDecoration(labelText: 'Reps'), keyboardType: TextInputType.number),
               ],
             ),
           ),
@@ -212,24 +228,24 @@ class _BlockListState extends State<BlockList> {
             TextButton(
               onPressed: () async {
                 if (muscleCtrl.text.isNotEmpty) {
-                  final blockRef = await FirebaseFirestore.instance.collection('planner_blocks').add({
+                  await FirebaseFirestore.instance.collection('planner_blocks').add({
                     'container_id': widget.containerId,
                     'title': '$selectedDay - ${muscleCtrl.text}'
                   });
                   
-                  if (exNameCtrl.text.isNotEmpty) {
-                    await FirebaseFirestore.instance.collection('planner_exercises').add({
-                      'block_id': blockRef.id,
-                      'name': exNameCtrl.text,
-                      'description': '',
-                      'sets': 0,
-                      'reps': int.tryParse(repsCtrl.text) ?? 0,
-                      'image_path': ''
-                    });
-                  }
-                  
                   Navigator.pop(ctx);
                   _loadBlocks();
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Workout day added!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                        backgroundColor: const Color(0xFFD0FD3E),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      )
+                    );
+                  }
                 }
               },
               child: const Text('Add'),
@@ -264,8 +280,8 @@ class _BlockListState extends State<BlockList> {
           padding: const EdgeInsets.all(8.0),
           child: TextButton.icon(
             onPressed: _addBlock,
-            icon: const Icon(Icons.add_box_outlined),
-            label: const Text('Add Day/Category Block'),
+            icon: const Icon(Icons.add_box_outlined, color: Color(0xFFD0FD3E)),
+            label: const Text('Add Day/Category Block', style: TextStyle(color: Color(0xFFD0FD3E))),
           ),
         ),
       ],
@@ -312,6 +328,7 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
     final descCtrl = TextEditingController();
     final setsCtrl = TextEditingController();
     final repsCtrl = TextEditingController();
+    final weightCtrl = TextEditingController();
     String? imagePath;
 
     showModalBottomSheet(
@@ -334,6 +351,7 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
                     Expanded(child: TextField(controller: repsCtrl, decoration: const InputDecoration(labelText: 'Reps'), keyboardType: TextInputType.number)),
                   ],
                 ),
+                TextField(controller: weightCtrl, decoration: const InputDecoration(labelText: 'Planned Weight (kg)'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
                 const SizedBox(height: 10),
                 if (imagePath != null) Image.file(File(imagePath!), height: 80, fit: BoxFit.cover),
                 TextButton.icon(
@@ -347,16 +365,38 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
                 ElevatedButton(
                   onPressed: () async {
                     if (nameCtrl.text.isEmpty) return;
+                    
+                    final sets = int.tryParse(setsCtrl.text);
+                    final reps = int.tryParse(repsCtrl.text);
+                    final weight = double.tryParse(weightCtrl.text);
+                    
+                    if ((sets == null && setsCtrl.text.isNotEmpty) || (reps == null && repsCtrl.text.isNotEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sets and Reps must be whole numbers')));
+                      return;
+                    }
+
                     await FirebaseFirestore.instance.collection('planner_exercises').add({
                       'block_id': widget.blockId,
                       'name': nameCtrl.text,
                       'description': descCtrl.text,
-                      'sets': int.tryParse(setsCtrl.text) ?? 0,
-                      'reps': int.tryParse(repsCtrl.text) ?? 0,
+                      'sets': sets ?? 0,
+                      'reps': reps ?? 0,
+                      'planned_weight': weight ?? 0.0,
                       'image_path': imagePath ?? ''
                     });
                     Navigator.pop(ctx);
                     _loadExercises();
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Exercise added!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                          backgroundColor: const Color(0xFFD0FD3E),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        )
+                      );
+                    }
                   },
                   child: const Text('Save Exercise'),
                 ),
@@ -397,7 +437,7 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${ex['sets'] ?? 0} sets x ${ex['reps'] ?? 0} reps'),
+                Text('${ex['sets'] ?? 0} sets x ${ex['reps'] ?? 0} reps @ ${(ex['planned_weight'] as num? ?? 0).toStringAsFixed(1)} kg'),
                 if (isExpanded && description.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4.0),
@@ -417,7 +457,10 @@ class _ExerciseMiniListState extends State<ExerciseMiniList> {
             ),
           );
         }).toList(),
-        TextButton(onPressed: _addExercise, child: const Text('+ Add Exercise')),
+        TextButton(
+          onPressed: _addExercise, 
+          child: const Text('+ Add Exercise', style: TextStyle(color: Color(0xFFD0FD3E)))
+        ),
       ],
     );
   }
